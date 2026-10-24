@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>추석 카드 만들기 수업 복습 퀴즈</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Canvas Confetti for Celebration Effect -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800;900&display=swap');
+    
+    * {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Malgun Gothic", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    
+    /* 어르신 터치 최적화: 최소 터치 영역 보장 */
+    .touch-btn {
+      touch-action: manipulation;
+      transition: all 0.15s ease-in-out;
+    }
+    .touch-btn:active {
+      transform: scale(0.97);
+    }
+    
+    /* 애니메이션 */
+    @keyframes pulse-subtle {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+    }
+    .animate-pulse-subtle {
+      animation: pulse-subtle 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col justify-between antialiased">
+
+  <!-- 상단 헤더 -->
+  <header class="bg-blue-700 text-white shadow-md sticky top-0 z-30">
+    <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <span class="text-2xl">🌕</span>
+        <h1 class="text-lg md:text-xl font-bold tracking-tight">추석 카드 수업 복습 퀴즈</h1>
+      </div>
+      <span id="header-user-tag" class="hidden text-xs bg-amber-400 text-slate-900 font-extrabold px-2.5 py-1 rounded-full shadow">
+        수강생
+      </span>
+    </div>
+  </header>
+
+  <!-- 메인 컨테이너 (모바일 최적화 폭) -->
+  <main class="w-full max-w-md mx-auto px-4 py-5 flex-grow flex flex-col justify-center">
+
+    <!-- 1단계: 이름 입력 및 참여자 명단 화면 -->
+    <section id="step-intro" class="bg-white rounded-3xl p-6 shadow-xl border-2 border-blue-200">
+      <div class="text-center mb-6">
+        <span class="inline-block bg-blue-100 text-blue-800 text-sm font-extrabold px-3 py-1 rounded-full mb-2">
+          스마트폰 AI 2시간 완결
+        </span>
+        <h2 class="text-2xl md:text-3xl font-black text-slate-900 leading-snug">
+          오늘 배운 내용을<br><span class="text-blue-600">신나게 복습</span>해볼까요?
+        </h2>
+        <p class="text-slate-600 text-base md:text-lg mt-2 font-medium">
+          총 <strong class="text-blue-700 font-bold">7문제</strong>로 실력을 확인해보세요!
+        </p>
+      </div>
+
+      <!-- 이름 입력창 -->
+      <div class="space-y-4 mb-6">
+        <label for="user-name" class="block text-lg font-bold text-slate-800">
+          ✏️ 수강생 성함을 입력해 주세요
+        </label>
+        <input 
+          type="text" 
+          id="user-name" 
+          placeholder="예: 홍길동" 
+          maxlength="10"
+          autocomplete="off"
+          class="w-full px-4 py-4 text-xl font-bold text-center border-2 border-slate-300 rounded-2xl focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-100 bg-slate-50 transition"
+        />
+        <p id="name-error" class="hidden text-rose-600 text-sm font-bold text-center">
+          ⚠️ 성함을 2글자 이상 입력해 주세요!
+        </p>
+      </div>
+
+      <!-- 시작 버튼 -->
+      <button 
+        type="button" 
+        onclick="startQuiz()" 
+        class="touch-btn w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xl font-black rounded-2xl shadow-lg shadow-blue-300 flex items-center justify-center space-x-2 animate-pulse-subtle">
+        <span>퀴즈 시작하기</span>
+        <span class="text-2xl">👉</span>
+      </button>
+
+      <!-- 실시간 참여 수강생 명단 현황 -->
+      <div class="mt-8 pt-5 border-t border-slate-200">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-bold text-slate-700 flex items-center">
+            <span class="mr-1.5">👥</span> 오늘 참여한 수강생 명단
+          </h3>
+          <span id="participant-count" class="text-xs font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+            0명 참여
+          </span>
+        </div>
+        <div id="participant-list" class="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
+          <!-- 명단 칩 렌더링 영역 -->
+          <span class="text-xs text-slate-400">아직 참여한 수강생이 없습니다. 첫 번째로 도전해보세요!</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2단계: 퀴즈 풀기 화면 -->
+    <section id="step-quiz" class="hidden flex flex-col">
+      <!-- 진행도 및 남은 문항 -->
+      <div class="bg-white rounded-2xl p-4 shadow-md mb-4 border border-slate-200">
+        <div class="flex justify-between items-center mb-2">
+          <span id="quiz-badge" class="bg-amber-100 text-amber-900 text-xs md:text-sm font-black px-3 py-1 rounded-full">
+            O / X 퀴즈
+          </span>
+          <span class="text-base font-extrabold text-blue-700">
+            문제 <span id="current-q-num" class="text-2xl font-black">1</span> / 7
+          </span>
+        </div>
+        <!-- 프로그레스 바 -->
+        <div class="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+          <div id="progress-bar" class="bg-blue-600 h-full rounded-full transition-all duration-300" style="width: 14%;"></div>
+        </div>
+      </div>
+
+      <!-- 문제 카드 -->
+      <div class="bg-white rounded-3xl p-6 shadow-xl border-2 border-slate-200 mb-4 flex-grow flex flex-col justify-between">
+        <div>
+          <div class="flex items-start space-x-2 mb-4">
+            <span class="bg-blue-600 text-white text-sm font-black w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
+              Q
+            </span>
+            <h2 id="question-text" class="text-xl md:text-2xl font-extrabold text-slate-900 leading-snug">
+              문제 본문이 여기에 표시됩니다.
+            </h2>
+          </div>
+          <p id="question-sub" class="text-slate-500 text-sm md:text-base font-semibold ml-10 mb-6">
+            알맞은 정답을 하나 선택해 터치하세요.
+          </p>
+        </div>
+
+        <!-- 보기 옵션 렌더링 영역 -->
+        <div id="options-container" class="space-y-3 my-2">
+          <!-- JS에서 동적 생성 -->
+        </div>
+
+        <!-- 즉시 해설 안내 박스 (정답/오답 클릭 시 노출) -->
+        <div id="feedback-box" class="hidden mt-4 p-4 rounded-2xl border-2 transition-all duration-200">
+          <div class="flex items-center space-x-2 mb-1.5">
+            <span id="feedback-icon" class="text-2xl">⭕</span>
+            <span id="feedback-title" class="text-lg font-black">정답입니다!</span>
+          </div>
+          <p id="feedback-desc" class="text-slate-700 text-base font-medium leading-relaxed">
+            해설 내용이 여기에 들어갑니다.
+          </p>
+          <button 
+            type="button" 
+            id="next-btn" 
+            onclick="goNextQuestion()" 
+            class="touch-btn mt-4 w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold rounded-xl shadow flex items-center justify-center space-x-2">
+            <span id="next-btn-text">다음 문제로 가기</span>
+            <span>👉</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3단계: 최종 결과 화면 -->
+    <section id="step-result" class="hidden bg-white rounded-3xl p-6 shadow-xl border-2 border-blue-300 text-center">
+      <!-- 트로피 / 이모지 -->
+      <div class="mb-3">
+        <span id="result-emoji" class="text-6xl inline-block transform hover:scale-110 transition">🏆</span>
+      </div>
+
+      <!-- 칭찬 수료 안내 -->
+      <h2 class="text-2xl md:text-3xl font-black text-slate-900 mb-1">
+        수고하셨습니다!
+      </h2>
+      <p class="text-lg md:text-xl font-extrabold text-blue-700 mb-4">
+        <span id="result-name" class="text-slate-900 bg-amber-200 px-2.5 py-0.5 rounded-lg mr-1 font-black">홍길동</span> 수강생님
+      </p>
+
+      <!-- 점수 카드 박스 -->
+      <div class="bg-gradient-to-b from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-3xl p-5 mb-5 shadow-inner">
+        <p class="text-slate-600 text-base font-bold mb-1">총 7문제 중 맞힌 수</p>
+        <div class="flex items-center justify-center space-x-2">
+          <span id="result-score" class="text-5xl md:text-6xl font-black text-blue-700">7</span>
+          <span class="text-2xl md:text-3xl font-bold text-slate-400">/ 7개</span>
+        </div>
+        <p id="result-comment" class="mt-3 text-base md:text-lg font-extrabold text-indigo-900">
+          완벽합니다! 스마트폰 AI 추석 카드의 최고 달인이십니다! 🌕
+        </p>
+      </div>
+
+      <!-- 다시하기 및 공유 버튼 -->
+      <div class="space-y-3">
+        <button 
+          type="button" 
+          onclick="restartQuiz()" 
+          class="touch-btn w-full py-4 bg-blue-600 hover:bg-blue-700 text-white text-xl font-black rounded-2xl shadow-lg shadow-blue-200 flex items-center justify-center space-x-2">
+          <span>🔄 처음부터 다시 풀기</span>
+        </button>
+
+        <button 
+          type="button" 
+          onclick="toggleScoreBoard()" 
+          class="touch-btn w-full py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-base font-bold rounded-2xl border border-slate-300 flex items-center justify-center space-x-1.5">
+          <span>📋</span>
+          <span id="toggle-list-text">전체 수강생 명단 및 점수 보기</span>
+        </button>
+      </div>
+
+      <!-- 전체 참가자 명단 토글 영역 -->
+      <div id="full-ranking-box" class="hidden mt-5 pt-4 border-t border-slate-200 text-left">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-base font-black text-slate-800 flex items-center">
+            <span>🏆 우리 교실 수강생 참여 기록</span>
+          </h3>
+          <button 
+            type="button"
+            onclick="openResetModal()" 
+            class="touch-btn text-xs bg-rose-100 hover:bg-rose-200 text-rose-700 font-extrabold px-3 py-1.5 rounded-lg border border-rose-300 transition">
+            🗑️ 명단 초기화
+          </button>
+        </div>
+        <div id="ranking-list" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+          <!-- 랭킹 항목들 렌더링 -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 초기화 전용 커스텀 모달 (confirm 차단 방지) -->
+  <div id="reset-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center border-4 border-rose-200 animate-pulse-subtle">
+      <div class="text-5xl mb-3">⚠️</div>
+      <h3 class="text-2xl font-black text-slate-900 mb-2">기록을 모두 지울까요?</h3>
+      <p class="text-slate-600 text-base font-bold mb-6 leading-relaxed">
+        지금까지 참여한 모든 수강생의<br>
+        <span class="text-rose-600">이름과 점수 기록이 전부 삭제</span>됩니다.
+      </p>
+      <div class="grid grid-cols-2 gap-3">
+        <button 
+          type="button" 
+          onclick="closeResetModal()" 
+          class="touch-btn py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-lg font-bold rounded-xl border border-slate-300">
+          취소
+        </button>
+        <button 
+          type="button" 
+          onclick="executeClearParticipants()" 
+          class="touch-btn py-3.5 bg-rose-600 hover:bg-rose-700 text-white text-lg font-black rounded-xl shadow-lg shadow-rose-200">
+          네, 지우기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 알림 토스트 메시지 -->
+  <div id="toast-msg" class="fixed bottom-12 left-1/2 transform -translate-x-1/2 z-50 hidden bg-slate-900 text-white font-extrabold px-5 py-3 rounded-2xl shadow-2xl text-center text-sm md:text-base border border-slate-700">
+    <span id="toast-text">참여 명단이 깨끗하게 초기화되었습니다.</span>
+  </div>
+
+  <!-- 하단 푸터 -->
+  <footer class="py-3 text-center text-xs text-slate-400 bg-slate-200 border-t border-slate-300">
+    시니어 스마트폰 AI 교실 • 추석 감사 카드 만들기 실습 복습용
+  </footer>
+
+  <!-- 자바스크립트 로직 -->
+  <script>
+    /* ============================================================
+       1. 퀴즈 문제 데이터 (총 7문항: O/X 및 4지선다 혼합)
+       ============================================================ */
+    const quizData = [
+      {
+        id: 1,
+        type: 'OX',
+        titleBadge: '1교시 • 음성 실습',
+        question: '제미나이에서 그림과 글이 들어간 카드를 만들 때는 타자를 칠 필요 없이, 하단의 파란색 마이크를 누르고 말로 주문할 수 있다.',
+        options: [
+          { text: '⭕ 맞다 (그렇다)', isCorrect: true },
+          { text: '❌ 아니다 (틀리다)', isCorrect: false }
+        ],
+        explanation: '맞습니다! 손가락으로 타자를 치지 않아도 파란색 마이크 버튼을 콕 누르고 말로 편하게 말씀하시면 멋진 그림 카드가 완성됩니다.'
+      },
+      {
+        id: 2,
+        type: 'CHOICE',
+        titleBadge: '2교시 • 사진 고르기',
+        question: '제미나이에 올려서 한복 카드를 만들 때, 가장 추천하는 내 얼굴 사진은 어떤 사진일까요?',
+        options: [
+          { text: '① 마스크를 쓰고 멀리서 찍힌 사진', isCorrect: false },
+          { text: '② 짙은 선글라스를 낀 옆모습 사진', isCorrect: false },
+          { text: '③ 얼굴이 큼직하고 조명이 밝은 정면 사진', isCorrect: true },
+          { text: '④ 어둡고 심하게 흔들린 밤 사진', isCorrect: false }
+        ],
+        explanation: '정답은 3번입니다! 얼굴이 또렷하고 밝게 나온 정면 사진을 올려야 인공지능이 내 인상을 그대로 유지하며 자연스럽게 한복을 입혀줍니다.'
+      },
+      {
+        id: 3,
+        type: 'OX',
+        titleBadge: '2교시 • 마법의 주문',
+        question: '내 사진으로 한복 카드를 만들 때, 다른 사람 얼굴로 바뀌지 않게 하려면 "얼굴과 표정은 그대로 유지하고"라는 말을 꼭 붙여야 한다.',
+        options: [
+          { text: '⭕ 맞다 (그렇다)', isCorrect: true },
+          { text: '❌ 아니다 (틀리다)', isCorrect: false }
+        ],
+        explanation: '맞습니다! 그냥 "한복 입혀줘"라고만 하면 엉뚱한 남의 얼굴이 나올 수 있으므로, 반드시 "얼굴은 그대로 유지하고"를 꼭 말해야 합니다.'
+      },
+      {
+        id: 4,
+        type: 'CHOICE',
+        titleBadge: '1교시 • 한 줄 공식',
+        question: '오늘 배운 쉬운 한 줄 프롬프트 공식의 4가지 요소가 올바르게 짝지어진 것은?',
+        options: [
+          { text: '① (무엇을) (스타일) (용도) (비율)', isCorrect: true },
+          { text: '② (이름) (나이) (전화번호) (주소)', isCorrect: false },
+          { text: '③ (색깔) (날씨) (음식) (시간)', isCorrect: false },
+          { text: '④ (스토어) (로그인) (아이디) (비밀번호)', isCorrect: false }
+        ],
+        explanation: '정답은 1번! "(무엇을)을 (스타일)로, (용도)에 쓸 거야. (비율)로 만들어 줘" 4가지만 기억하시면 어떤 카드든 뚝딱 만듭니다.'
+      },
+      {
+        id: 5,
+        type: 'OX',
+        titleBadge: '1교시 • 안전 수칙',
+        question: '제미나이 같은 생성형 AI를 사용할 때 주민등록번호, 계좌번호, 집 주소 같은 민감한 개인정보를 입력해도 안전하다.',
+        options: [
+          { text: '⭕ 맞다 (입력해도 된다)', isCorrect: false },
+          { text: '❌ 아니다 (절대 입력 금지!)', isCorrect: true }
+        ],
+        explanation: '틀립니다(❌)! 인공지능과 대화할 때는 개인정보 보호를 위해 주민번호, 비밀번호, 상세 주소 등은 절대로 입력하거나 말씀하시면 안 됩니다.'
+      },
+      {
+        id: 6,
+        type: 'CHOICE',
+        titleBadge: '1•2교시 • 저장 방법',
+        question: '완성된 카드 그림을 내 스마트폰 갤러리에 저장하는 가장 정확한 3단계 방법은?',
+        options: [
+          { text: '① 그림을 두 손가락으로 꼬집기', isCorrect: false },
+          { text: '② 그림을 2초간 꾹 눌러 [이미지 다운로드] 터치', isCorrect: true },
+          { text: '③ 스마트폰 화면을 빠르게 다섯 번 치기', isCorrect: false },
+          { text: '④ 스마트폰 전원 껐다 켜기', isCorrect: false }
+        ],
+        explanation: '정답은 2번입니다! 그림을 살짝 콕 눌러 키운 뒤, 손가락으로 도장 찍듯 2초간 꾹 누르고 [이미지 다운로드]를 누르면 내 폰에 쏙 저장됩니다.'
+      },
+      {
+        id: 7,
+        type: 'CHOICE',
+        titleBadge: '2교시 • 카톡 전송',
+        question: '저장한 한복 카드를 가족이나 친구 단톡방으로 보낼 때 카카오톡 대화창에서 가장 먼저 누르는 버튼은?',
+        options: [
+          { text: '① 대화창 왼쪽 아래 노란색 더하기 [+] 버튼', isCorrect: true },
+          { text: '② 카카오톡 소리 끄기 버튼', isCorrect: false },
+          { text: '③ 음성 통화 버튼', isCorrect: false },
+          { text: '④ 대화방 나가기 버튼', isCorrect: false }
+        ],
+        explanation: '정답은 1번! 카톡 글 쓰는 곳 왼쪽 노란색 [+] 버튼을 누르고 첫 번째 [앨범]을 콕 선택하시면 방금 만든 카드를 바로 전송할 수 있습니다.'
+      }
+    ];
+
+    /* ============================================================
+       2. 상태 관리 변수
+       ============================================================ */
+    let currentUserName = '';
+    let currentQuestionIndex = 0;
+    let correctCount = 0;
+    let isAnswered = false;
+    const STORAGE_KEY = 'senior_chuseok_quiz_users_v2';
+
+    /* ============================================================
+       3. Web Audio API 기반 효과음 생성기 (외부 링크 불필요)
+       ============================================================ */
+    const SoundManager = {
+      ctx: null,
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      },
+      // 경쾌하고 밝은 딩동댕 (정답)
+      playCorrect() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          
+          const playNote = (freq, start, duration) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, start);
+            
+            gain.gain.setValueAtTime(0.3, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+            
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            
+            osc.start(start);
+            osc.stop(start + duration);
+          };
+
+          // 솔 - 도 - 미 3단 화음
+          playNote(523.25, now, 0.18);        // C5
+          playNote(659.25, now + 0.12, 0.18); // E5
+          playNote(783.99, now + 0.24, 0.35); // G5
+        } catch (e) {
+          console.log('Audio playback error', e);
+        }
+      },
+      // 부드러운 오답 알림음
+      playWrong() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          
+          osc.frequency.setValueAtTime(320, now);
+          osc.frequency.exponentialRampToValueAtTime(180, now + 0.3);
+          
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+          
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          
+          osc.start(now);
+          osc.stop(now + 0.3);
+        } catch (e) {
+          console.log('Audio playback error', e);
+        }
+      },
+      // 축하 팡파레 효과음
+      playFanfare() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const notes = [523.25, 659.25, 783.99, 1046.50]; // 도-미-솔-도
+          notes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+            gain.gain.setValueAtTime(0.35, now + idx * 0.12);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.4);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + idx * 0.12);
+            osc.stop(now + idx * 0.12 + 0.4);
+          });
+        } catch(e) {}
+      }
+    };
+
+    /* ============================================================
+       4. 로컬 스토리지 명단 관리
+       ============================================================ */
+    function getStoredParticipants() {
+      try {
+        const data = localStorage.getItem(STORAGE_KEY);
+        return data ? JSON.parse(data) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveParticipant(name, score = null) {
+      let list = getStoredParticipants();
+      const existingIdx = list.findIndex(item => item.name === name);
+      const timestamp = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+
+      if (existingIdx >= 0) {
+        if (score !== null) {
+          list[existingIdx].score = score;
+          list[existingIdx].time = timestamp;
+        }
+      } else {
+        list.unshift({
+          name: name,
+          score: score,
+          time: timestamp
+        });
+      }
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      } catch (e) {}
+      renderParticipantBadges();
+    }
+
+    function renderParticipantBadges() {
+      const list = getStoredParticipants();
+      const container = document.getElementById('participant-list');
+      const countEl = document.getElementById('participant-count');
+
+      if (!container || !countEl) return;
+      countEl.textContent = `${list.length}명 참여`;
+
+      if (list.length === 0) {
+        container.innerHTML = '<span class="text-xs text-slate-400">참여한 수강생이 없습니다. 첫 번째로 도전해보세요!</span>';
+        return;
+      }
+
+      container.innerHTML = list.map(item => `
+        <span class="inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-extrabold bg-blue-100 text-blue-900 border border-blue-200">
+          <span class="mr-1 text-slate-500">👤</span>
+          ${escapeHtml(item.name)}
+          ${item.score !== null ? `<span class="ml-1 text-blue-700 bg-white px-1.5 py-0.2 rounded-md font-black shadow-xs">${item.score}점</span>` : ''}
+        </span>
+      `).join('');
+    }
+
+    function renderFullRanking() {
+      const list = getStoredParticipants();
+      const container = document.getElementById('ranking-list');
+      if (!container) return;
+
+      if (list.length === 0) {
+        container.innerHTML = '<p class="text-sm text-slate-400 text-center py-4 font-bold">등록된 수강생 기록이 없습니다.</p>';
+        return;
+      }
+
+      container.innerHTML = list.map((item, idx) => `
+        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200 text-sm">
+          <div class="flex items-center space-x-2">
+            <span class="w-6 h-6 rounded-full ${idx === 0 ? 'bg-amber-400 text-amber-950 font-black' : 'bg-slate-200 text-slate-700 font-bold'} flex items-center justify-center text-xs">
+              ${idx + 1}
+            </span>
+            <span class="font-black text-slate-800 text-base">${escapeHtml(item.name)}</span>
+            <span class="text-xs text-slate-400 font-medium">${item.time || ''}</span>
+          </div>
+          <span class="font-extrabold text-base ${item.score === 7 ? 'text-amber-600' : 'text-blue-700'}">
+            ${item.score !== null ? `${item.score} / 7 문제` : '진행 중'}
+          </span>
+        </div>
+      `).join('');
+    }
+
+    /* 모달 및 초기화 직접 실행 로직 */
+    function openResetModal() {
+      const modal = document.getElementById('reset-modal');
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeResetModal() {
+      const modal = document.getElementById('reset-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function executeClearParticipants() {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (err) {
+        console.error('Storage clear error:', err);
+      }
+      
+      closeResetModal();
+      renderParticipantBadges();
+      renderFullRanking();
+      showToast('참여 명단이 깨끗하게 초기화되었습니다! ✨');
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast-msg');
+      const text = document.getElementById('toast-text');
+      if (!toast || !text) return;
+      
+      text.textContent = message;
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 2400);
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+      });
+    }
+
+    /* ============================================================
+       5. 퀴즈 실행 동선 (시작 -> 풀기 -> 결과)
+       ============================================================ */
+    function startQuiz() {
+      const input = document.getElementById('user-name');
+      const err = document.getElementById('name-error');
+      const name = input.value.trim();
+
+      if (!name || name.length < 2) {
+        err.classList.remove('hidden');
+        input.focus();
+        return;
+      }
+      err.classList.add('hidden');
+      currentUserName = name;
+
+      // 헤더 배지 업데이트
+      const userTag = document.getElementById('header-user-tag');
+      userTag.textContent = `${name} 님`;
+      userTag.classList.remove('hidden');
+
+      // 로컬 명단에 등록 (점수는 아직 미입력)
+      saveParticipant(name, null);
+
+      // 음성 엔진 초기화 터치 활성화
+      SoundManager.init();
+
+      // 화면 전환
+      document.getElementById('step-intro').classList.add('hidden');
+      document.getElementById('step-quiz').classList.remove('hidden');
+
+      currentQuestionIndex = 0;
+      correctCount = 0;
+      loadQuestion(0);
+    }
+
+    function loadQuestion(index) {
+      isAnswered = false;
+      const q = quizData[index];
+
+      // 인디케이터 업데이트
+      document.getElementById('current-q-num').textContent = index + 1;
+      document.getElementById('quiz-badge').textContent = q.titleBadge || (q.type === 'OX' ? 'O / X 퀴즈' : '객관식 선택');
+      
+      const percent = Math.round(((index + 1) / quizData.length) * 100);
+      document.getElementById('progress-bar').style.width = `${percent}%`;
+
+      // 문제 및 보조 설명 렌더링
+      document.getElementById('question-text').textContent = q.question;
+      document.getElementById('question-sub').textContent = q.type === 'OX' 
+        ? '내용이 맞으면 ⭕, 틀리면 ❌를 터치하세요.' 
+        : '가장 올바른 보기를 하나 콕 터치하세요.';
+
+      // 피드백 박스 숨김
+      const feedbackBox = document.getElementById('feedback-box');
+      feedbackBox.classList.add('hidden');
+      feedbackBox.className = 'hidden mt-4 p-4 rounded-2xl border-2 transition-all duration-200';
+
+      // 보기 버튼 생성
+      const container = document.getElementById('options-container');
+      container.innerHTML = '';
+
+      if (q.type === 'OX') {
+        // OX 퀴즈는 2분할 큼직한 버튼
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-2 gap-3 pt-2';
+
+        q.options.forEach((opt, optIdx) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'touch-btn py-5 px-3 rounded-2xl border-2 border-slate-300 bg-slate-50 text-slate-800 text-xl font-black shadow flex flex-col items-center justify-center space-y-1 active:bg-blue-100 hover:border-blue-400';
+          btn.innerHTML = `<span class="text-3xl">${optIdx === 0 ? '⭕' : '❌'}</span><span>${optIdx === 0 ? '맞다' : '틀리다'}</span>`;
+          btn.onclick = () => handleSelectOption(opt.isCorrect, btn, q);
+          grid.appendChild(btn);
+        });
+        container.appendChild(grid);
+      } else {
+        // 4지선다형 객관식
+        q.options.forEach((opt) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'touch-btn w-full p-4 rounded-2xl border-2 border-slate-300 bg-slate-50 text-slate-900 text-lg md:text-xl font-bold shadow-sm text-left flex items-start space-x-2.5 active:bg-blue-100 hover:border-blue-400 transition';
+          btn.innerHTML = `<span class="leading-snug">${escapeHtml(opt.text)}</span>`;
+          btn.onclick = () => handleSelectOption(opt.isCorrect, btn, q);
+          container.appendChild(btn);
+        });
+      }
+    }
+
+    function handleSelectOption(isCorrect, selectedBtn, question) {
+      if (isAnswered) return;
+      isAnswered = true;
+
+      const feedbackBox = document.getElementById('feedback-box');
+      const feedbackIcon = document.getElementById('feedback-icon');
+      const feedbackTitle = document.getElementById('feedback-title');
+      const feedbackDesc = document.getElementById('feedback-desc');
+      const nextBtnText = document.getElementById('next-btn-text');
+
+      // 모든 버튼 터치 비활성화 및 색상 표시
+      const buttons = document.querySelectorAll('#options-container button');
+      buttons.forEach(btn => {
+        btn.classList.add('pointer-events-none');
+        btn.classList.remove('hover:border-blue-400', 'active:bg-blue-100');
+      });
+
+      if (isCorrect) {
+        correctCount++;
+        SoundManager.playCorrect();
+        selectedBtn.classList.remove('bg-slate-50', 'border-slate-300');
+        selectedBtn.classList.add('bg-emerald-50', 'border-emerald-500', 'text-emerald-950', 'ring-4', 'ring-emerald-200');
+
+        feedbackBox.classList.remove('hidden');
+        feedbackBox.classList.add('bg-emerald-50', 'border-emerald-400');
+        feedbackIcon.textContent = '🎉 딩동댕! 정답입니다!';
+        feedbackTitle.textContent = '정확하게 맞히셨습니다!';
+        feedbackTitle.className = 'text-lg font-black text-emerald-800';
+      } else {
+        SoundManager.playWrong();
+        selectedBtn.classList.remove('bg-slate-50', 'border-slate-300');
+        selectedBtn.classList.add('bg-rose-50', 'border-rose-500', 'text-rose-950', 'ring-4', 'ring-rose-200');
+
+        feedbackBox.classList.remove('hidden');
+        feedbackBox.classList.add('bg-amber-50', 'border-amber-400');
+        feedbackIcon.textContent = '💡 아쉬워요! 다시 기억해봐요';
+        feedbackTitle.textContent = '괜찮습니다! 함께 정답을 배워봐요';
+        feedbackTitle.className = 'text-lg font-black text-amber-900';
+      }
+
+      feedbackDesc.textContent = question.explanation;
+
+      if (currentQuestionIndex === quizData.length - 1) {
+        nextBtnText.textContent = '결과 확인하기';
+      } else {
+        nextBtnText.textContent = '다음 문제로 가기';
+      }
+
+      // 화면을 피드백 박스가 잘 보이도록 부드럽게 스크롤
+      setTimeout(() => {
+        feedbackBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 100);
+    }
+
+    function goNextQuestion() {
+      currentQuestionIndex++;
+      if (currentQuestionIndex < quizData.length) {
+        loadQuestion(currentQuestionIndex);
+      } else {
+        showFinalResult();
+      }
+    }
+
+    /* ============================================================
+       6. 결과 화면 표시 및 축하 효과
+       ============================================================ */
+    function showFinalResult() {
+      document.getElementById('step-quiz').classList.add('hidden');
+      const resultSec = document.getElementById('step-result');
+      resultSec.classList.remove('hidden');
+
+      // 점수 저장
+      saveParticipant(currentUserName, correctCount);
+
+      // DOM 텍스트 세팅
+      document.getElementById('result-name').textContent = currentUserName;
+      document.getElementById('result-score').textContent = correctCount;
+
+      const emojiEl = document.getElementById('result-emoji');
+      const commentEl = document.getElementById('result-comment');
+
+      if (correctCount === 7) {
+        emojiEl.textContent = '👑';
+        commentEl.textContent = '7문제 만점! 오늘 수업의 최고 우등생이십니다! 🌕✨';
+        SoundManager.playFanfare();
+        triggerConfetti(true);
+      } else if (correctCount >= 5) {
+        emojiEl.textContent = '🎉';
+        commentEl.textContent = '훌륭합니다! 스마트폰으로 멋진 추석 카드를 척척 만드시겠어요!';
+        SoundManager.playFanfare();
+        triggerConfetti(false);
+      } else {
+        emojiEl.textContent = '👏';
+        commentEl.textContent = '끝까지 멋지게 풀어주셔서 감사합니다! 오늘 배운 카드 만들기 실습 대성공!';
+      }
+
+      renderFullRanking();
+    }
+
+    // 축하 꽃가루 폭죽 효과 (canvas-confetti)
+    function triggerConfetti(isGrand = false) {
+      if (typeof confetti !== 'function') return;
+      const count = isGrand ? 120 : 60;
+      confetti({
+        particleCount: count,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#2563eb', '#f59e0b', '#10b981', '#ec4899', '#8b5cf6']
+      });
+
+      if (isGrand) {
+        setTimeout(() => {
+          confetti({
+            particleCount: 80,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0 }
+          });
+          confetti({
+            particleCount: 80,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1 }
+          });
+        }, 350);
+      }
+    }
+
+    function restartQuiz() {
+      document.getElementById('step-result').classList.add('hidden');
+      document.getElementById('step-intro').classList.remove('hidden');
+      document.getElementById('user-name').value = '';
+      document.getElementById('header-user-tag').classList.add('hidden');
+      renderParticipantBadges();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function toggleScoreBoard() {
+      const box = document.getElementById('full-ranking-box');
+      const toggleText = document.getElementById('toggle-list-text');
+      if (box.classList.contains('hidden')) {
+        box.classList.remove('hidden');
+        toggleText.textContent = '명단 접기 닫기';
+        renderFullRanking();
+        setTimeout(() => {
+          box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
+      } else {
+        box.classList.add('hidden');
+        toggleText.textContent = '전체 수강생 명단 및 점수 보기';
+      }
+    }
+
+    /* 초기 실행 */
+    window.addEventListener('DOMContentLoaded', () => {
+      renderParticipantBadges();
+      // 엔터키 입력 지원
+      const nameInput = document.getElementById('user-name');
+      if (nameInput) {
+        nameInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            startQuiz();
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>
